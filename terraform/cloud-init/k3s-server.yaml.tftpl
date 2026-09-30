@@ -1,0 +1,67 @@
+#cloud-config
+hostname: ${hostname}
+manage_etc_hosts: true
+
+users:
+  - default
+  - name: ubuntu
+    groups:
+      - sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - jq
+  - qemu-guest-agent
+
+write_files:
+  - path: /etc/sysctl.d/99-kubernetes.conf
+    content: |
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.bridge.bridge-nf-call-iptables = 1
+      net.ipv4.ip_forward = 1
+  - path: /etc/modules-load.d/k8s.conf
+    content: |
+      br_netfilter
+  - path: /usr/local/bin/install-k3s.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      export INSTALL_K3S_VERSION="${k3s_version}"
+
+      wait_for_api() {
+        local target="$1"
+        for _ in $(seq 1 60); do
+          if curl -kfsS "https://$${target}:6443/readyz" >/dev/null 2>&1; then
+            return 0
+          fi
+          sleep 10
+        done
+        return 1
+      }
+
+%{ if is_first_server ~}
+      curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --cluster-init --token ${k3s_token} --disable traefik --disable servicelb ${tls_sans_flags}" sh -
+%{ else ~}
+      echo "Waiting for bootstrap server at ${bootstrap_server_ip}:6443"
+      wait_for_api "${bootstrap_server_ip}"
+
+      curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --server https://${bootstrap_server_ip}:6443 --token ${k3s_token} --disable traefik --disable servicelb ${tls_sans_flags}" sh -
+%{ endif ~}
+
+runcmd:
+  - modprobe br_netfilter
+  - sysctl --system
+  - swapoff -a
+  - sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+  - systemctl enable --now qemu-guest-agent
+  - /usr/local/bin/install-k3s.sh
+  - touch /var/log/k3s-bootstrap.done

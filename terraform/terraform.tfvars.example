@@ -1,0 +1,54 @@
+# Copy to terraform.tfvars and fill in your values:
+#   cp terraform.tfvars.example terraform/terraform.tfvars
+
+proxmox_endpoint     = "https://192.168.2.11:8006"
+proxmox_token_id     = "root@pam!terraform"
+proxmox_token_secret = "replace-me"
+proxmox_insecure     = true
+
+# One Proxmox node name per K8s VM (must match your cluster)
+proxmox_nodes = ["jdsrv01", "jdsrv02", "jdsrv03"]
+
+# Per-node disk datastore (must be active on that node):
+#   jdsrv01/jdsrv02 -> nvme-storage
+#   jdsrv03         -> local-lvm (faster than hdd-storage)
+k8s_nodes = [
+  {
+    name         = "k8s-01"
+    proxmox_node = "jdsrv01"
+    ip           = "192.168.2.41"
+    vm_id        = 401
+    datastore_id = "nvme-storage"
+    cpu_cores    = 8
+    memory_mb    = 16384
+  },
+  {
+    name         = "k8s-02"
+    proxmox_node = "jdsrv02"
+    ip           = "192.168.2.42"
+    vm_id        = 402
+    datastore_id = "nvme-storage"
+  },
+  {
+    name         = "k8s-03"
+    proxmox_node = "jdsrv03"
+    ip           = "192.168.2.43"
+    vm_id        = 403
+    datastore_id = "local-lvm"
+  },
+]
+
+network_gateway       = "192.168.2.254"
+network_bridge        = "vmbr0"
+snippets_datastore_id = "local"
+image_datastore_id    = "local"
+
+ssh_public_key = "ssh-ed25519 AAAA... your-key"
+
+vm_cpu_cores = 4
+vm_memory_mb = 8192
+vm_disk_gb   = 40
+
+api_vip     = "192.168.2.50"
+k3s_token   = "replace-with-a-long-random-string"
+k3s_version = "latest"

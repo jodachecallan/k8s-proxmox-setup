@@ -1,0 +1,25 @@
+# Local Terraform provider cache
+terraform/.terraform/
+terraform/crash.log
+
+# Secrets and local state
+terraform/terraform.tfvars
+terraform/*.tfstate
+terraform/*.tfstate.*
+
+# Kubeconfig and tokens
+kubeconfig
+kubeconfig-*
+*.kubeconfig
+
+# SSH keys (keep public keys out if stored locally)
+*.pem
+id_rsa
+id_ed25519
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/

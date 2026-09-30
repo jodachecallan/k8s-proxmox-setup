@@ -1,0 +1,61 @@
+# Install:
+#   helm repo add traefik https://traefik.github.io/charts
+#   helm repo update
+#   helm install traefik traefik/traefik -n traefik --create-namespace -f cluster/traefik/helm-values.yaml
+#
+# Upgrade:
+#   helm upgrade traefik traefik/traefik -n traefik -f cluster/traefik/helm-values.yaml
+
+deployment:
+  kind: DaemonSet
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 0
+
+# Avoid hostNetwork (needs root for :80/:443). Use hostPort instead.
+hostNetwork: false
+
+service:
+  type: ClusterIP
+
+ports:
+  web:
+    port: 8000
+    hostPort: 80
+    expose:
+      default: true
+  websecure:
+    port: 8443
+    hostPort: 443
+    expose:
+      default: true
+  # Avoid clashing with host metrics exporters when using hostPort elsewhere
+  metrics:
+    port: 9100
+    expose:
+      default: false
+
+providers:
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: true
+  kubernetesIngress:
+    enabled: true
+    ingressClass: traefik
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+
+# Disable Traefik read/write/idle timeouts so long video streams are not cut.
+# allowCrossNamespace is set above via providers.kubernetesCRD; timeouts need args.
+additionalArguments:
+  - "--entryPoints.web.transport.respondingTimeouts.readTimeout=0s"
+  - "--entryPoints.web.transport.respondingTimeouts.writeTimeout=0s"
+  - "--entryPoints.web.transport.respondingTimeouts.idleTimeout=0s"
+  - "--entryPoints.websecure.transport.respondingTimeouts.readTimeout=0s"
+  - "--entryPoints.websecure.transport.respondingTimeouts.writeTimeout=0s"
+  - "--entryPoints.websecure.transport.respondingTimeouts.idleTimeout=0s"
